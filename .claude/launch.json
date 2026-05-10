@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cursor-hackathon",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "LIAISON_MOCK=1 npm run dev"],
+      "port": 3001,
+      "autoPort": true
+    }
+  ]
+}

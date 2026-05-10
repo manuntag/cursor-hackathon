@@ -1,0 +1,957 @@
+@import "tailwindcss";
+
+/* ===========================================================
+   Design tokens — kept in sync with .superpowers/.../aesthetic-locked.html
+   3 voices: Newsreader (italic accents) / DM Sans (body) / JetBrains Mono (labels)
+   =========================================================== */
+:root {
+  --paper: #f7f4ec;
+  --paper-2: #f1ecdf;
+  --ink: #161512;
+  --ink-2: #3a3530;
+  --muted: #8a8378;
+  --rule: rgba(22, 21, 18, 0.12);
+  --rule-strong: rgba(22, 21, 18, 0.22);
+  --teal: #0e6856;
+  --teal-deep: #0a4f42;
+  --teal-soft: rgba(14, 104, 86, 0.10);
+  --oxblood: #7c2d12;
+  --oxblood-soft: rgba(124, 45, 18, 0.10);
+  --ember: #b04220;
+  --ochre: #8a5a16;
+  --ochre-soft: rgba(180, 140, 40, 0.12);
+  --shadow-sm: 0 1px 0 rgba(22, 21, 18, 0.04);
+  --shadow-md: 0 1px 2px rgba(22, 21, 18, 0.04), 0 12px 32px rgba(22, 21, 18, 0.06);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-teal: var(--teal);
+  --color-teal-deep: var(--teal-deep);
+  --color-teal-soft: var(--teal-soft);
+  --color-oxblood: var(--oxblood);
+  --color-oxblood-soft: var(--oxblood-soft);
+  --color-ochre: var(--ochre);
+  --color-ochre-soft: var(--ochre-soft);
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(circle at 90% 0%, rgba(124, 45, 18, 0.04), transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(14, 104, 86, 0.04), transparent 40%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><circle cx='60' cy='60' r='0.5' fill='%23161512' opacity='0.05'/></svg>");
+}
+
+/* ===========================================================
+   Recurring components — small, reusable utility classes
+   =========================================================== */
+
+/* Editorial kicker: small uppercase mono label with trailing rule */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--oxblood);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.kicker::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* The brand strikethrough — used wherever a saving is shown */
+.strike-savings {
+  font-style: normal;
+  color: var(--muted);
+  position: relative;
+  display: inline-block;
+}
+.strike-savings::after {
+  content: "";
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: 54%;
+  height: 3px;
+  background: var(--oxblood);
+  transform: rotate(-3deg);
+}
+
+/* Tier color coding */
+.tier-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.tier-haiku { background: var(--teal-soft); color: var(--teal-deep); }
+.tier-sonnet { background: var(--ochre-soft); color: var(--ochre); }
+.tier-opus { background: var(--oxblood-soft); color: var(--oxblood); }
+
+/* ===========================================================
+   Motion — restrained, one staggered entrance per scene
+   =========================================================== */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.rise > * {
+  animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+.rise > *:nth-child(1) { animation-delay: 0.04s; }
+.rise > *:nth-child(2) { animation-delay: 0.12s; }
+.rise > *:nth-child(3) { animation-delay: 0.20s; }
+.rise > *:nth-child(4) { animation-delay: 0.30s; }
+.rise > *:nth-child(5) { animation-delay: 0.40s; }
+.rise > *:nth-child(6) { animation-delay: 0.50s; }
+.rise > *:nth-child(7) { animation-delay: 0.60s; }
+.rise > *:nth-child(8) { animation-delay: 0.70s; }
+.rise > *:nth-child(9) { animation-delay: 0.80s; }
+.rise > *:nth-child(10) { animation-delay: 0.90s; }
+
+/* ===========================================================
+   The Scout — animation for the Liaison's team-assembly process.
+   3-phase reveal: scout (rows in), compare (candidates fan out),
+   coordinate (unselected fade, selected highlights, rationale appears).
+   =========================================================== */
+
+/* Each row sets `--row-i` inline. Total runtime ≈ 5s for 10 rows. */
+.liaison-row { opacity: 0; animation: liaison-row-in 0.45s cubic-bezier(0.2, 0.7, 0.1, 1) both; animation-delay: calc(var(--row-i, 0) * 0.18s); }
+@keyframes liaison-row-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Candidate cards fade in within a row. */
+@keyframes liaison-cand-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Unselected candidates desaturate at the "compare → coordinate" turn. */
+.liaison-candidate-unselected {
+  opacity: 0;
+  animation:
+    liaison-cand-in 0.4s ease both,
+    liaison-cand-fade 0.6s ease forwards;
+  animation-delay:
+    calc((var(--row-i, 0) * 0.18s) + 0.45s + (var(--cand-i, 0) * 0.08s)),
+    calc((var(--row-i, 0) * 0.18s) + 2.10s);
+}
+@keyframes liaison-cand-fade {
+  to { opacity: 0.45; filter: saturate(0.5); }
+}
+
+/* Selected candidate scales + outlines in teal as the others fade. */
+.liaison-candidate-selected {
+  opacity: 0;
+  animation:
+    liaison-cand-in 0.4s ease both,
+    liaison-cand-pick 0.6s cubic-bezier(0.2, 0.7, 0.1, 1) forwards;
+  animation-delay:
+    calc((var(--row-i, 0) * 0.18s) + 0.45s + (var(--cand-i, 0) * 0.08s)),
+    calc((var(--row-i, 0) * 0.18s) + 2.10s);
+}
+@keyframes liaison-cand-pick {
+  0%   { box-shadow: 0 0 0 0 rgba(14, 104, 86, 0); transform: none; }
+  40%  { box-shadow: 0 0 0 6px rgba(14, 104, 86, 0.14); transform: scale(1.02); }
+  100% { box-shadow: 0 0 0 1.5px rgba(14, 104, 86, 0.55); transform: scale(1.01); }
+}
+
+/* Bar fill — each bar starts after candidates fade in, with criterion stagger. */
+.bar-track {
+  height: 5px;
+  background: var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 3px;
+  animation: bar-fill 0.42s cubic-bezier(0.2, 0.7, 0.1, 1) forwards;
+  animation-delay: calc(
+    (var(--row-i, 0) * 0.18s)
+    + 0.95s
+    + (var(--cand-i, 0) * 0.06s)
+    + (var(--crit-i, 0) * 0.06s)
+  );
+}
+@keyframes bar-fill {
+  to { width: var(--score-pct, 0%); }
+}
+
+/* Total ticks in once bars finish. */
+.liaison-total {
+  opacity: 0;
+  animation: liaison-total-in 0.4s cubic-bezier(0.2, 0.7, 0.1, 1) both;
+  animation-delay: calc((var(--row-i, 0) * 0.18s) + 1.75s);
+}
+@keyframes liaison-total-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* "Selected" badge pops in with the highlight. */
+.liaison-winmark {
+  opacity: 0;
+  transform: scale(0.85);
+  animation: liaison-winmark-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: calc((var(--row-i, 0) * 0.18s) + 2.20s);
+}
+@keyframes liaison-winmark-in {
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Rationale fades in last, after selection settles. */
+.liaison-rationale {
+  opacity: 0;
+  animation: liaison-rationale-in 0.45s ease both;
+  animation-delay: calc((var(--row-i, 0) * 0.18s) + 2.50s);
+}
+@keyframes liaison-rationale-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 0.95; transform: none; }
+}
+
+/* The phase indicator above the panel cycles label between three states. */
+.liaison-phase-track { position: relative; height: 2px; background: var(--rule); border-radius: 1px; overflow: hidden; }
+.liaison-phase-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+  background: linear-gradient(90deg, var(--oxblood), var(--ochre) 50%, var(--teal-deep));
+  animation: liaison-phase-fill 7.4s ease-out forwards;
+}
+@keyframes liaison-phase-fill { to { width: 100%; } }
+
+/* Each phase now lingers ~2.4s instead of 1.4s — the loading state breathes
+   long enough to read, and the "Team assembled" status holds at 7.4s while
+   the user decides when to reveal the results below. */
+.liaison-phase-label { position: relative; min-height: 1.2em; }
+.liaison-phase-label > span { position: absolute; left: 0; top: 0; opacity: 0; animation-fill-mode: forwards; }
+.liaison-phase-label .scout      { animation: liaison-phase-show 2.4s ease both; animation-delay: 0.1s; }
+.liaison-phase-label .compare    { animation: liaison-phase-show 2.4s ease both; animation-delay: 2.5s; }
+.liaison-phase-label .coordinate { animation: liaison-phase-show 2.4s ease both; animation-delay: 4.9s; }
+.liaison-phase-label .complete   { animation: liaison-phase-stay 0.6s ease both; animation-delay: 7.4s; }
+@keyframes liaison-phase-show {
+  0%   { opacity: 0; transform: translateY(4px); }
+  18%  { opacity: 1; transform: none; }
+  82%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes liaison-phase-stay {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Respect reduced-motion preference — skip to final state. */
+@media (prefers-reduced-motion: reduce) {
+  .liaison-row,
+  .liaison-candidate,
+  .liaison-candidate-unselected,
+  .liaison-candidate-selected,
+  .liaison-rationale,
+  .liaison-total,
+  .liaison-winmark,
+  .liaison-phase-fill,
+  .liaison-phase-label > span,
+  .bar-fill {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .liaison-phase-fill { width: 100%; }
+  .liaison-candidate-unselected { opacity: 0.45; filter: saturate(0.5); }
+  .liaison-candidate-selected { box-shadow: 0 0 0 1.5px rgba(14, 104, 86, 0.55); }
+  .bar-fill { width: var(--score-pct, 0%); }
+}
+
+/* CriteriaPrimer ─ four cards above the LiaisonPanel that explain what each
+   criterion is actually measuring. Each card fades-and-rises in stagger,
+   and per-card mini-visuals animate their own elements (skill chips ticking
+   on, stars filling, budget marker sliding, tier slot lighting up). */
+.criteria-card {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: criteria-card-rise 0.7s ease both;
+  animation-delay: calc(var(--card-i, 0) * 0.10s);
+}
+@keyframes criteria-card-rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.criteria-skill-pill {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: criteria-pill-in 0.5s ease both;
+  animation-delay: calc(0.10s + var(--el-i, 0) * 0.18s);
+}
+@keyframes criteria-pill-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+.criteria-skill-pill .criteria-check {
+  transform: scale(0);
+  animation: criteria-check-pop 0.35s cubic-bezier(0.5, 1.6, 0.5, 1) both;
+  animation-delay: calc(0.32s + var(--el-i, 0) * 0.18s);
+}
+@keyframes criteria-check-pop {
+  to { transform: scale(1); }
+}
+
+.criteria-star {
+  opacity: 0;
+  animation: criteria-star-in 0.45s ease both;
+  animation-delay: calc(0.20s + var(--el-i, 0) * 0.08s);
+}
+@keyframes criteria-star-in {
+  to { opacity: 1; }
+}
+.criteria-jobs-tag {
+  opacity: 0;
+  animation: criteria-jobs-in 0.5s ease 0.85s both;
+}
+@keyframes criteria-jobs-in {
+  to { opacity: 1; }
+}
+
+.criteria-budget-fill {
+  width: 0;
+  animation: criteria-budget-fill 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.35s both;
+}
+@keyframes criteria-budget-fill {
+  to { /* `width` is set inline; this keyframe re-applies it on enter */ }
+}
+.criteria-budget-marker,
+.criteria-budget-label {
+  opacity: 0;
+  animation: criteria-marker-in 0.4s ease 1.15s both;
+}
+@keyframes criteria-marker-in {
+  to { opacity: 1; }
+}
+
+.criteria-tier-slot {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: criteria-tier-in 0.5s ease both;
+  animation-delay: calc(0.25s + var(--el-i, 0) * 0.10s);
+}
+@keyframes criteria-tier-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .criteria-card,
+  .criteria-skill-pill,
+  .criteria-skill-pill .criteria-check,
+  .criteria-star,
+  .criteria-jobs-tag,
+  .criteria-budget-fill,
+  .criteria-budget-marker,
+  .criteria-budget-label,
+  .criteria-tier-slot {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Feed entry redesign ─ collapsed-by-default cards that emphasize how the
+   specialists coordinate. The header is a button (full row clickable); the
+   coordination strip ("Built on @X · Used by @Y · ★ Endorsed by @Z") sits
+   directly under the header and is ALWAYS visible — that's the peer-network
+   story you can scan without expanding anything. Body + deliverable mount
+   only when expanded, animated in. */
+.feed-entry {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.feed-entry.is-expanded {
+  border-color: rgba(14, 104, 86, 0.30);
+}
+.feed-entry:hover { border-color: var(--ink-2); }
+.feed-entry.is-expanded:hover { border-color: var(--teal-deep); }
+
+.feed-entry-header {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 22px 14px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+.feed-entry-header:focus-visible {
+  outline: 2px solid var(--teal-deep);
+  outline-offset: -2px;
+}
+
+.feed-entry-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-family: var(--font-dm-sans, ui-sans-serif, system-ui);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.feed-entry-identity { min-width: 0; }
+.feed-entry-name {
+  font-family: var(--font-dm-sans, ui-sans-serif, system-ui);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.feed-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.feed-entry-time {
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.feed-entry-chevron {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  transition: background 0.18s ease;
+}
+.feed-entry-header:hover .feed-entry-chevron { background: var(--teal-soft); }
+.feed-chevron {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.feed-chevron.is-up { transform: rotate(180deg); }
+
+/* Coordination strip — three labeled segments, each with handle chips */
+.feed-entry-collab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 6px 22px 16px;
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  border-top: 1px dashed var(--rule);
+  margin-top: 0;
+}
+.feed-entry-collab-solo { color: var(--muted); }
+.feed-collab-empty {
+  font-style: italic;
+  font-family: var(--font-newsreader, ui-serif, serif);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.feed-collab {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.feed-collab-label {
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-size: 9.5px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.feed-collab-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.feed-collab-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+.feed-collab-cites .feed-collab-chip {
+  background: rgba(180, 140, 40, 0.10);
+  border-color: rgba(180, 140, 40, 0.22);
+  color: var(--ochre);
+}
+.feed-collab-cited-by .feed-collab-chip {
+  background: rgba(14, 104, 86, 0.07);
+  border-color: rgba(14, 104, 86, 0.20);
+  color: var(--teal-deep);
+}
+.feed-collab-endorsed .feed-collab-label {
+  color: var(--teal-deep);
+}
+.feed-collab-endorsed .feed-collab-chip {
+  background: var(--teal-soft);
+  border-color: rgba(14, 104, 86, 0.30);
+  color: var(--teal-deep);
+}
+
+/* Expanded body — full narrative + deliverable HTML, mounted on click */
+.feed-entry-expanded {
+  padding: 0 22px 20px;
+  animation: feed-expand-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes feed-expand-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.feed-entry-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.feed-entry-deliverable {
+  margin-top: 14px;
+  background: rgba(241, 236, 223, 0.55);
+  border-left: 2px solid var(--teal-deep);
+  border-radius: 0 4px 4px 0;
+  padding: 12px 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-entry-expanded,
+  .feed-chevron {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Coordination summary line above the feed list */
+.feed-coordination-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: baseline;
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 18px;
+}
+.feed-coordination-stat strong {
+  color: var(--teal-deep);
+  font-weight: 600;
+}
+
+/* Reveal gate — sits between the phase-status track and the rest of the
+   team-assembly content (CriteriaPrimer + TasteSelection + LiaisonCarousel).
+   The button fades in only after the phase animation has finished
+   (~7.4s + ~0.6s status hold = ~8s), giving the loading state time to
+   breathe. The button has a soft, attention-drawing pulse so a stage demo
+   viewer sees it without it being noisy. Clicking it is a state change in
+   the page, not a CSS toggle — so the content below mounts fresh and its
+   own entrance animations play. */
+.reveal-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 24px 24px;
+  opacity: 0;
+  animation: reveal-gate-in 0.9s ease 8.0s both;
+}
+@keyframes reveal-gate-in {
+  to { opacity: 1; }
+}
+.reveal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-dm-sans, ui-sans-serif, system-ui);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  color: white;
+  background: var(--teal-deep);
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px -8px rgba(14, 104, 86, 0.55);
+  transition:
+    background 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease;
+  animation: reveal-btn-pulse 2.4s ease-in-out infinite;
+  animation-delay: 9.0s;
+}
+.reveal-btn:hover {
+  background: var(--teal-deep);
+  filter: brightness(1.08);
+  box-shadow: 0 14px 36px -10px rgba(14, 104, 86, 0.65);
+}
+.reveal-btn:active {
+  transform: translateY(1px);
+}
+.reveal-btn-arrow {
+  font-family: var(--font-newsreader, ui-serif, serif);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+.reveal-btn:hover .reveal-btn-arrow {
+  transform: translateX(3px);
+}
+@keyframes reveal-btn-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(14, 104, 86, 0.0),
+      0 8px 24px -8px rgba(14, 104, 86, 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(14, 104, 86, 0.08),
+      0 12px 32px -8px rgba(14, 104, 86, 0.55);
+  }
+}
+
+.reveal-gate-hint {
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The revealed content fades + rises in once the gate is clicked. Child
+   sections (CriteriaPrimer, TasteSelection, LiaisonCarousel) still play
+   their own staggered animations on top of this wrapper transition. */
+.reveal-content {
+  animation: reveal-content-in 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes reveal-content-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-gate,
+  .reveal-btn,
+  .reveal-content {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .reveal-btn { box-shadow: 0 4px 14px -4px rgba(14, 104, 86, 0.4); }
+}
+
+/* LiaisonCarousel — prev/next buttons + numbered pagination dots that wrap
+   a single LiaisonPanel row at a time. Selected dot is teal; disabled
+   buttons fade out and lose pointer affordance. */
+.liaison-carousel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    background 0.18s ease,
+    transform 0.12s ease;
+}
+.liaison-carousel-btn:hover:not(:disabled) {
+  border-color: var(--teal-deep);
+  color: var(--teal-deep);
+  background: var(--teal-soft);
+}
+.liaison-carousel-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.liaison-carousel-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.liaison-carousel-arrow {
+  font-family: var(--font-newsreader, ui-serif, serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.liaison-carousel-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.liaison-carousel-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: white;
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.12s ease;
+}
+.liaison-carousel-dot:hover {
+  border-color: var(--ink-2);
+  color: var(--ink-2);
+}
+.liaison-carousel-dot.is-active {
+  background: var(--teal-deep);
+  border-color: var(--teal-deep);
+  color: white;
+  transform: scale(1.08);
+}
+
+@media (max-width: 720px) {
+  .liaison-carousel-dot {
+    width: 22px;
+    height: 22px;
+    font-size: 9.5px;
+  }
+}
+
+/* Sarah memory polaroids — floating photo cards in the Agent step of
+   IntakeFlow. Each photo enters tilted, drops in with a soft float, and
+   settles at its final --photo-rot angle. The accompanying italic note
+   fades in alongside the second polaroid. */
+.sarah-photo {
+  opacity: 0;
+  transform: translateY(18px) rotate(0deg);
+  animation: sarah-photo-in 0.85s cubic-bezier(0.34, 1.2, 0.36, 1) both;
+  animation-delay: calc(var(--photo-i, 0) * 0.18s + 0.15s);
+}
+@keyframes sarah-photo-in {
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--photo-rot, 0deg));
+  }
+}
+.sarah-photo-note {
+  opacity: 0;
+  animation: sarah-note-in 0.6s ease 0.7s both;
+}
+@keyframes sarah-note-in {
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sarah-photo {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: rotate(var(--photo-rot, 0deg)) !important;
+  }
+  .sarah-photo-note {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* TasteSelection ─ three landing-page mocks brought up for consideration
+   one-by-one. Each card floats up, holds a "Considering…" scrim long
+   enough to read, then drops a verdict. Once all three have been read the
+   loser cards desaturate and the winner locks with a teal ring.
+
+   Per-card timing (offset by --mock-i * 3.0s):
+     0.0–0.6s   card fades up
+     0.3–0.7s   "Considering…" scrim fades in
+     0.7–2.4s   scrim sits on top (1.7s of clear reading time)
+     2.4–2.8s   scrim fades out
+     2.6–3.15s  verdict + badge reveal
+   Total per card: ~3.0s. With 3 cards: ~9.0s.
+   Lock at 9.4s: loser cards desaturate, winner ring locks, conclusion fades. */
+
+.taste-card {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: taste-card-rise 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: calc(var(--mock-i, 0) * 3s);
+}
+@keyframes taste-card-rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.taste-considering {
+  opacity: 0;
+  animation:
+    taste-considering-in 0.4s ease both,
+    taste-considering-out 0.4s ease both;
+  animation-delay:
+    calc(var(--mock-i, 0) * 3s + 0.3s),
+    calc(var(--mock-i, 0) * 3s + 2.4s);
+}
+@keyframes taste-considering-in { to { opacity: 1; } }
+@keyframes taste-considering-out { to { opacity: 0; } }
+
+.taste-badge,
+.taste-verdict {
+  opacity: 0;
+  animation: taste-reveal 0.55s cubic-bezier(0.5, 0, 0.1, 1) both;
+  animation-delay: calc(var(--mock-i, 0) * 3s + 2.6s);
+}
+@keyframes taste-reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Once all three have been considered (~9.0s in), unselected cards
+   desaturate and pull back; the selected card locks with a teal ring. */
+.taste-card-passed {
+  animation: taste-card-rise 0.6s cubic-bezier(0.4, 0, 0.2, 1) both,
+             taste-card-fade 0.7s ease both;
+  animation-delay: calc(var(--mock-i, 0) * 3s),
+                   9.4s;
+}
+@keyframes taste-card-fade {
+  to { opacity: 0.55; filter: saturate(0.45); transform: translateY(0) scale(0.985); }
+}
+.taste-card-selected {
+  animation: taste-card-rise 0.6s cubic-bezier(0.4, 0, 0.2, 1) both,
+             taste-card-lock 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: calc(var(--mock-i, 0) * 3s),
+                   9.4s;
+}
+@keyframes taste-card-lock {
+  to {
+    box-shadow:
+      0 0 0 2px var(--teal-deep),
+      0 12px 36px -12px rgba(14, 104, 86, 0.35),
+      var(--shadow-sm);
+  }
+}
+
+.taste-conclusion {
+  opacity: 0;
+  animation: taste-conclusion-in 0.7s ease 9.8s both;
+}
+@keyframes taste-conclusion-in {
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taste-card,
+  .taste-card-passed,
+  .taste-card-selected,
+  .taste-considering,
+  .taste-badge,
+  .taste-verdict,
+  .taste-conclusion {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .taste-considering { opacity: 0 !important; }
+  .taste-card-passed { opacity: 0.55 !important; filter: saturate(0.45); }
+  .taste-card-selected { box-shadow: 0 0 0 2px var(--teal-deep), var(--shadow-sm) !important; }
+}
+
+/* Live-update feedback ─ a single teal pulse on the feed entry whose body
+   just got replaced by a live `post` event from /api/run/[id]/stream. */
+.entry-live-flash > article {
+  animation: entry-live-flash 1.6s ease-out 1 both;
+}
+@keyframes entry-live-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(14, 104, 86, 0.0), var(--shadow-sm); }
+  18%  { box-shadow: 0 0 0 3px rgba(14, 104, 86, 0.42), var(--shadow-sm); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 104, 86, 0.0), var(--shadow-sm); }
+}
+
+/* Tiny pulsing dot next to the "LIVE" status pill in the page kicker. */
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal-deep);
+  animation: live-dot-pulse 1.6s ease-in-out infinite;
+}
+@keyframes live-dot-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.25); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-live-flash > article { animation: none !important; }
+  .live-dot { animation: none !important; opacity: 1; }
+}
