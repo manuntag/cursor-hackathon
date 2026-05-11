@@ -1,26 +1,40 @@
-import Link from "next/link";
 import Image from "next/image";
 import type { EnrichedBrief } from "@/lib/types";
-import { findExpert } from "@/lib/seed/experts";
+import { ConciergeScan } from "@/components/ConciergeScan";
+import { LiaisonHandoffCard } from "@/components/LiaisonHandoffCard";
+
+/**
+ * The Liaison that ultimately accepts Sarah's brief. The concierge-scan above
+ * cycles through the open Clustly registry to show the network sweep, but the
+ * actual handoff goes to WhiteClaw's curated coordinator. Display data kept
+ * inline so this file is self-contained.
+ */
+const MATCHED_CONCIERGE = {
+  name: "Carter Network Concierge",
+  tier: "sonnet" as const,
+  tierLabel: "Sonnet 4.6",
+  rating: 4.91,
+  priorJobs: 412,
+  bio: "Multi-skill SMB coordination. Has run 400+ briefs across launch, rebrand, and growth projects. Strong opinions on what should run on Haiku vs Sonnet vs Opus — refuses to over-spec.",
+};
 
 type Props = {
   brief: EnrichedBrief;
-  liaisonHandle: string;
 };
 
 /**
- * Renders the 3-step intake before the Liaison takes over:
+ * Renders the 4-step intake before the Liaison takes over:
  *   1. Raw user input (informal — what Sarah actually said)
  *   2. Personal Agent's memory + enrichment (off-platform layer made visible)
- *   3. Hand-off to the Liaison (the platform's curated coordinator)
+ *   3. Agent-concierge scan — a terminal-style slash-command interface that
+ *      sweeps the on-platform registry for a fit Liaison
+ *   4. Hand-off to the matched Liaison (the platform's curated coordinator)
  *
  * This is the *narrative bridge* between the savings hero and the team-
  * assembly section. Without it, judges won't see why a Personal Agent layer
  * matters. With it, the 3-tier model is legible in 20 seconds.
  */
-export function IntakeFlow({ brief, liaisonHandle }: Props) {
-  const liaison = findExpert(liaisonHandle);
-
+export function IntakeFlow({ brief }: Props) {
   return (
     <div className="grid grid-cols-[64px_1fr] gap-x-[20px] gap-y-[28px] items-start">
       {/* ─────────── Step 1: Raw user input ─────────── */}
@@ -131,66 +145,29 @@ export function IntakeFlow({ brief, liaisonHandle }: Props) {
         </details>
       </div>
 
-      {/* ─────────── Step 3: Liaison hand-off ─────────── */}
-      <Step number={3} label="LIAISON" tone="liaison" />
+      {/* ─────────── Step 3: Agent-concierge scan ─────────── */}
+      <Step number={3} label="SCAN" tone="scan" />
+      <div>
+        <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--muted)] mb-[10px]">
+          Personal agent &middot; queried the network for a fit Liaison
+        </div>
+        <ConciergeScan matchName={MATCHED_CONCIERGE.name} />
+      </div>
+
+      {/* ─────────── Step 4: Liaison hand-off ─────────── */}
+      <Step number={4} label="LIAISON" tone="liaison" />
       <div>
         <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--muted)] mb-[6px]">
           Personal agent &middot; handed off to a Liaison on the platform
         </div>
-        {liaison ? (
-          <Link
-            href={`/expert/${liaison.handle}`}
-            className="block bg-white border border-[var(--rule)] rounded-[8px] p-[18px_22px] hover:shadow-[var(--shadow-md)] transition-shadow"
-            style={{ boxShadow: "var(--shadow-sm)" }}
-          >
-            <div className="grid grid-cols-[44px_1fr_auto] gap-[14px] items-center">
-              <div
-                className="w-[44px] h-[44px] rounded-full flex items-center justify-center text-white font-sans font-semibold text-[16px]"
-                style={{
-                  background:
-                    liaison.tier === "opus"
-                      ? "var(--oxblood)"
-                      : liaison.tier === "sonnet"
-                      ? "var(--ochre)"
-                      : "var(--teal-deep)",
-                }}
-              >
-                {liaison.name[0]}
-              </div>
-              <div>
-                <div className="font-sans font-semibold text-[16px] tracking-[-0.01em]">
-                  {liaison.name}
-                </div>
-                <div className="text-[12px] text-[var(--muted)] mt-[3px]">
-                  <span className={`tier-pill tier-${liaison.tier} mr-[6px]`}>
-                    {liaison.tier === "opus"
-                      ? "Opus 4.7"
-                      : liaison.tier === "sonnet"
-                      ? "Sonnet 4.6"
-                      : "Haiku 4.5"}
-                  </span>
-                  Liaison &middot; ★ {liaison.rating.toFixed(2)} &middot; {liaison.priorJobs} prior teams assembled
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-mono text-[10px] text-[var(--muted)] tracking-[0.10em] uppercase">
-                  Paid on
-                </div>
-                <div className="font-sans font-semibold text-[13px] text-[var(--teal-deep)] mt-[2px]">
-                  commission
-                </div>
-                <div className="font-mono text-[9.5px] text-[var(--muted)] tracking-[0.04em] mt-[2px]">
-                  % of team spend
-                </div>
-              </div>
-            </div>
-            <p className="mt-[12px] text-[13px] text-[var(--ink-2)] leading-[1.55] max-w-[640px]">
-              {liaison.bio}
-            </p>
-          </Link>
-        ) : (
-          <div className="text-[13px] text-[var(--muted)]">Liaison not found.</div>
-        )}
+        <LiaisonHandoffCard
+          name={MATCHED_CONCIERGE.name}
+          tier={MATCHED_CONCIERGE.tier}
+          tierLabel={MATCHED_CONCIERGE.tierLabel}
+          rating={MATCHED_CONCIERGE.rating}
+          priorJobs={MATCHED_CONCIERGE.priorJobs}
+          bio={MATCHED_CONCIERGE.bio}
+        />
       </div>
     </div>
   );
@@ -203,13 +180,15 @@ function Step({
 }: {
   number: number;
   label: string;
-  tone: "raw" | "enrich" | "liaison";
+  tone: "raw" | "enrich" | "scan" | "liaison";
 }) {
   const accent =
     tone === "raw"
       ? "var(--oxblood)"
       : tone === "enrich"
       ? "var(--ochre)"
+      : tone === "scan"
+      ? "var(--ink-2)"
       : "var(--teal-deep)";
   return (
     <div className="flex flex-col items-center pt-[2px]">

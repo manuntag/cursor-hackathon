@@ -240,7 +240,28 @@ body {
   to   { opacity: 0.95; transform: none; }
 }
 
-/* The phase indicator above the panel cycles label between three states. */
+/* The phase indicator above the panel cycles label between three states. The
+   parent .liaison-loading-gate keeps every animation in its initial frame
+   (animation-play-state: paused) until JS adds .is-playing on first viewport
+   intersection — so a user landing at the top of the run page sees a calm,
+   pre-roll phase track, and the 8-second loading sequence only starts when
+   they scroll the section into view. */
+.liaison-loading-gate :is(
+  .liaison-phase-fill,
+  .liaison-phase-label > span,
+  .reveal-gate,
+  .reveal-btn
+) {
+  animation-play-state: paused;
+}
+.liaison-loading-gate.is-playing :is(
+  .liaison-phase-fill,
+  .liaison-phase-label > span,
+  .reveal-gate,
+  .reveal-btn
+) {
+  animation-play-state: running;
+}
 .liaison-phase-track { position: relative; height: 2px; background: var(--rule); border-radius: 1px; overflow: hidden; }
 .liaison-phase-fill {
   position: absolute; left: 0; top: 0; bottom: 0; width: 0;
@@ -388,6 +409,7 @@ body {
    story you can scan without expanding anything. Body + deliverable mount
    only when expanded, animated in. */
 .feed-entry {
+  position: relative;
   background: white;
   border: 1px solid var(--rule);
   border-radius: 10px;
@@ -399,6 +421,59 @@ body {
 }
 .feed-entry:hover { border-color: var(--ink-2); }
 .feed-entry.is-expanded:hover { border-color: var(--teal-deep); }
+
+/* Tier-colored "spine" on the very left edge — gives each card a visual
+   anchor that matches the avatar color, and acts as the docking point for
+   coordination-graph lines. */
+.feed-entry::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--rule);
+  transition: background 0.18s ease;
+  z-index: 1;
+}
+.feed-entry[data-tier="opus"]::before { background: var(--oxblood); }
+.feed-entry[data-tier="sonnet"]::before { background: var(--ochre); }
+.feed-entry[data-tier="haiku"]::before { background: var(--teal-deep); }
+
+/* Purpose strip — a prominent uppercase category banner at the top of the
+   card. This is the answer to "what is this card for?" — readable at a glance
+   without expanding the entry. Styling intentionally newspaper-rubric. */
+.feed-entry-purpose {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px 8px;
+  background: linear-gradient(
+    to bottom,
+    rgba(241, 236, 223, 0.7) 0%,
+    rgba(241, 236, 223, 0.0) 100%
+  );
+  border-bottom: 1px dashed var(--rule);
+}
+.feed-entry-purpose::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  background: var(--muted);
+  opacity: 0.6;
+}
+.feed-entry-purpose-label {
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.feed-entry[data-tier="opus"] .feed-entry-purpose-label { color: var(--oxblood); }
+.feed-entry[data-tier="sonnet"] .feed-entry-purpose-label { color: var(--ochre); }
+.feed-entry[data-tier="haiku"] .feed-entry-purpose-label { color: var(--teal-deep); }
 
 .feed-entry-header {
   display: grid;
@@ -601,6 +676,74 @@ body {
 .feed-coordination-stat strong {
   color: var(--teal-deep);
   font-weight: 600;
+}
+
+/* Coordination graph — SVG overlay drawn behind the cards. The outer wrap is
+   relative-positioned; the SVG fills it; the card grid sits above the SVG
+   (z-index:1). On wider viewports the cards lay out in a 2-column grid so the
+   column gap becomes the "rail" curves arc through. On mobile the grid
+   collapses to a single column and the graph falls back to left-gutter
+   routing. */
+.feed-graph-wrap {
+  position: relative;
+}
+.feed-graph-wrap > .feed-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  column-gap: 56px;
+  row-gap: 22px;
+}
+@media (max-width: 880px) {
+  .feed-graph-wrap > .feed-list {
+    grid-template-columns: 1fr;
+    column-gap: 0;
+  }
+}
+.feed-coordination-graph {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+.feed-coord-edge {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Cite (built-on) edges — solid ochre, draw-in animation via pathLength=100 +
+   stroke-dashoffset. Starts hidden; the .is-active toggle sweeps offset → 0. */
+.feed-coord-edge-cite {
+  stroke: var(--ochre);
+  stroke-width: 1.6;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  opacity: 0.85;
+  transition: stroke-dashoffset 0.95s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.feed-coordination-graph.is-active .feed-coord-edge-cite {
+  stroke-dashoffset: 0;
+}
+/* Endorse edges — dotted teal, faded in (can't use dashoffset because dasharray
+   carries the dot pattern). Bulges farther than parallel cite edges so the
+   dotted line sits visibly outside the solid one between the same two cards. */
+.feed-coord-edge-endorse {
+  stroke: var(--teal-deep);
+  stroke-width: 1.4;
+  stroke-dasharray: 2.5 4;
+  stroke-opacity: 0;
+  transition: stroke-opacity 0.7s ease-out;
+}
+.feed-coordination-graph.is-active .feed-coord-edge-endorse {
+  stroke-opacity: 0.92;
+}
+@media (prefers-reduced-motion: reduce) {
+  .feed-coord-edge-cite { stroke-dashoffset: 0; transition: none !important; }
+  .feed-coord-edge-endorse { stroke-opacity: 0.85; transition: none !important; }
 }
 
 /* Reveal gate — sits between the phase-status track and the rest of the
@@ -954,4 +1097,434 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .entry-live-flash > article { animation: none !important; }
   .live-dot { animation: none !important; opacity: 1; }
+}
+
+/* The final deliverable — the culminating section after the feed. Presents
+   the launch site mockup (the actual artifact the team produced) inside a
+   warm paper frame so it reads as the demo's payoff. */
+.final-deliverable {
+  margin: 0;
+  position: relative;
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 20px 20px 18px;
+  box-shadow:
+    0 1px 2px rgba(22, 21, 18, 0.04),
+    0 24px 60px -12px rgba(22, 21, 18, 0.18);
+  animation: final-deliverable-in 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.final-deliverable::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    rgba(14, 104, 86, 0.0) 0%,
+    rgba(14, 104, 86, 0.18) 40%,
+    rgba(124, 45, 18, 0.18) 70%,
+    rgba(14, 104, 86, 0.0) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+.final-deliverable img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: var(--paper-2);
+}
+.final-deliverable-caption {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rule);
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.final-deliverable-caption > span:not(.final-deliverable-sep) {
+  color: var(--muted);
+  margin-right: 2px;
+}
+.final-deliverable-sep { color: var(--rule-strong); opacity: 0.6; }
+@keyframes final-deliverable-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .final-deliverable { animation: none !important; }
+}
+
+/* Restart pill — a floating action in the bottom-right that reloads the run
+   page so a presenter can replay the animations on demand. Persists across
+   the page; deliberately understated so it doesn't compete with content. */
+.restart-fab {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px 9px 14px;
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-family: var(--font-dm-sans, ui-sans-serif, system-ui);
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: -0.005em;
+  color: var(--ink-2);
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(22, 21, 18, 0.05),
+    0 10px 26px -8px rgba(22, 21, 18, 0.20);
+  transition: transform 0.16s ease, box-shadow 0.18s ease,
+              background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.restart-fab:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 2px rgba(22, 21, 18, 0.05),
+    0 14px 32px -8px rgba(22, 21, 18, 0.30);
+}
+.restart-fab:hover .restart-fab-icon { transform: rotate(-90deg); }
+.restart-fab:active { transform: translateY(0); }
+.restart-fab:focus-visible {
+  outline: 2px solid var(--teal-deep);
+  outline-offset: 2px;
+}
+.restart-fab-icon {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Liaison handoff card — gated on viewport entry by its own client component.
+   Pre-reveal: invisible and slightly lifted. On scroll-into-view: fades and
+   settles. One-shot — no exit animation, no replay. */
+.liaison-handoff-card {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 18px 22px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.liaison-handoff-card.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .liaison-handoff-card {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Concierge scan — terminal-style step in the intake flow. Dark chrome, mono
+   prompt, ticker that whips through candidate handles. The aesthetic borrows
+   from Cursor / Linear / Raycast: it should feel like an operator surface, not
+   a marketing card. */
+.concierge-scan {
+  background: #1a1714;
+  color: #d6cfb8;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgba(22, 21, 18, 0.10),
+    0 18px 40px -16px rgba(22, 21, 18, 0.40);
+  max-width: 760px;
+}
+.concierge-chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: #14110e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.concierge-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.dot-red    { background: #ed6a5e; }
+.dot-amber  { background: #f5bf4f; }
+.dot-green  { background: #61c554; }
+.concierge-chrome-label {
+  margin-left: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(214, 207, 184, 0.55);
+}
+.concierge-status {
+  margin-left: auto;
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(214, 207, 184, 0.55);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.concierge-status-idle::before,
+.concierge-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(214, 207, 184, 0.35);
+  display: inline-block;
+}
+.concierge-status.concierge-status-done {
+  color: #6fcf97;
+}
+.concierge-status.concierge-status-done::before {
+  background: #6fcf97;
+}
+.concierge-status:not(.concierge-status-idle):not(.concierge-status-done)::before {
+  background: #f5bf4f;
+  animation: concierge-scan-pulse 1s ease-in-out infinite;
+}
+@keyframes concierge-scan-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.35); }
+}
+
+.concierge-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #1a1714;
+}
+.concierge-caret {
+  color: #6fcf97;
+  font-size: 14px;
+  font-weight: 600;
+  user-select: none;
+}
+.concierge-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: #f0e9d2;
+  font-family: inherit;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  padding: 4px 0;
+  caret-color: #6fcf97;
+}
+.concierge-input::placeholder {
+  color: rgba(214, 207, 184, 0.42);
+}
+.concierge-input:disabled {
+  color: rgba(214, 207, 184, 0.55);
+  cursor: not-allowed;
+}
+.concierge-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(111, 207, 151, 0.12);
+  color: #6fcf97;
+  border: 1px solid rgba(111, 207, 151, 0.40);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease,
+              transform 0.10s ease;
+}
+.concierge-send:hover:not(:disabled) {
+  background: rgba(111, 207, 151, 0.22);
+  border-color: rgba(111, 207, 151, 0.65);
+}
+.concierge-send:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.concierge-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.concierge-send-arrow {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.concierge-output {
+  padding: 12px 16px 16px;
+  background: #1a1714;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  animation: concierge-output-in 0.28s ease-out both;
+}
+@keyframes concierge-output-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+.concierge-output-label {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(214, 207, 184, 0.55);
+  margin-bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.concierge-output-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 12px;
+  background: #6fcf97;
+  vertical-align: -1px;
+  animation: concierge-blink 1s steps(2, end) infinite;
+}
+@keyframes concierge-blink {
+  50% { opacity: 0; }
+}
+
+.concierge-ticker {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  min-height: 168px;
+}
+.concierge-ticker-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: concierge-row-in 0.22s ease-out forwards;
+}
+@keyframes concierge-row-in {
+  to { opacity: 0.55; transform: none; }
+}
+.concierge-ticker-row.is-current {
+  background: rgba(111, 207, 151, 0.10);
+  border: 1px solid rgba(111, 207, 151, 0.25);
+  padding: 2px 5px;
+  opacity: 1 !important;
+}
+.concierge-ticker-arrow {
+  color: rgba(214, 207, 184, 0.35);
+  font-size: 12px;
+}
+.concierge-ticker-row.is-current .concierge-ticker-arrow {
+  color: #6fcf97;
+}
+.concierge-ticker-name {
+  color: rgba(214, 207, 184, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.concierge-ticker-row.is-current .concierge-ticker-name {
+  color: #f0e9d2;
+  font-weight: 500;
+}
+.concierge-ticker-tag {
+  font-size: 9.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(214, 207, 184, 0.35);
+}
+.concierge-ticker-row.is-current .concierge-ticker-tag {
+  color: #6fcf97;
+}
+.concierge-ticker-tag-skipped {
+  color: rgba(237, 106, 94, 0.40);
+}
+
+.concierge-match {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(111, 207, 151, 0.10);
+  border: 1px solid rgba(111, 207, 151, 0.40);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  align-items: center;
+  animation: concierge-match-in 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes concierge-match-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.concierge-match-glyph {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #6fcf97;
+  color: #14110e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+.concierge-match-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(214, 207, 184, 0.55);
+}
+.concierge-match-name {
+  font-family: var(--font-dm-sans, ui-sans-serif, system-ui);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #f0e9d2;
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .concierge-output,
+  .concierge-ticker-row,
+  .concierge-match,
+  .concierge-output-cursor,
+  .concierge-status::before {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

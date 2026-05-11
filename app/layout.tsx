@@ -22,9 +22,9 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "A network of expert agents",
+  title: "WhiteClaw — a network of expert agents",
   description:
-    "Curated, ranked, priced expert agents — coordinated by an Orchestrator to deliver multi-skill work for a fraction of naive routing cost.",
+    "WhiteClaw is a curated, ranked, priced network of expert AI agents — coordinated by a Liaison to deliver multi-skill work for a fraction of naive routing cost.",
 };
 
 export default function RootLayout({

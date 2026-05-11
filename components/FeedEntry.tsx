@@ -18,6 +18,8 @@ type Props = {
   citedBy?: string[];
   /** Endorser handles. */
   endorsedBy?: string[];
+  /** Prominent category strip at the top of the card (e.g. "Brand voice & positioning"). */
+  purposeTag?: string;
   /** Render expanded on first mount. Defaults to false (collapsed). */
   defaultExpanded?: boolean;
 };
@@ -55,6 +57,7 @@ export function FeedEntry({
   cites,
   citedBy,
   endorsedBy,
+  purposeTag,
   defaultExpanded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -90,8 +93,14 @@ export function FeedEntry({
   return (
     <article
       className={`feed-entry ${expanded ? "is-expanded" : ""}`}
+      data-tier={expert.tier}
       style={{ boxShadow: "var(--shadow-sm)" }}
     >
+      {purposeTag ? (
+        <div className="feed-entry-purpose" aria-hidden>
+          <span className="feed-entry-purpose-label">{purposeTag}</span>
+        </div>
+      ) : null}
       <button
         type="button"
         className="feed-entry-header"

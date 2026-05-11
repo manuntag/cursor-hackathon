@@ -1,12 +1,15 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Masthead } from "@/components/Masthead";
 import { Kicker } from "@/components/Kicker";
-import { HeadlineHero } from "@/components/HeadlineHero";
 import { SavingsCard } from "@/components/SavingsCard";
 import { CompareCard } from "@/components/CompareCard";
 import { FeedEntry } from "@/components/FeedEntry";
+import {
+  FeedCoordinationGraph,
+  type CoordinationEdge,
+} from "@/components/FeedCoordinationGraph";
 import { PullQuote } from "@/components/PullQuote";
 import { LiaisonCarousel } from "@/components/LiaisonCarousel";
 import { CriteriaPrimer } from "@/components/CriteriaPrimer";
@@ -20,12 +23,7 @@ import {
 import { findExpert } from "@/lib/seed/experts";
 import { WEIGHTS } from "@/lib/scoring";
 import { summarize } from "@/lib/cost";
-import {
-  BRIEF,
-  DECOMPOSITION,
-  ENRICHED_BRIEF,
-  SELECTED_LIAISON_HANDLE,
-} from "@/lib/seed/scenario";
+import { BRIEF, DECOMPOSITION, ENRICHED_BRIEF } from "@/lib/seed/scenario";
 import type { CostSummary, FeedEvent, Tier, WorkItem } from "@/lib/types";
 
 type LiveStatus = "idle" | "connecting" | "streaming" | "done" | "error";
@@ -36,6 +34,24 @@ const SOCIAL_GRAPH: Record<string, { cites?: string[]; endorsedBy?: string[] }> 
   "marketing-magpies": { cites: ["sociallab", "growop"] },
   "legalkit-pro": { cites: ["amir-cpa"] },
   growop: { cites: ["wordsmith-studio"] },
+};
+
+/**
+ * Reader-friendly "what this card is" tag keyed by WorkItem.id. Cards in the
+ * feed lead with this instead of the generic expert.role — viewers see at a
+ * glance which artifact each entry represents.
+ */
+const PURPOSE_TAGS: Record<string, string> = {
+  "brand-strategy": "Brand voice & positioning",
+  "ui-design": "UI · landing page",
+  "marketing-strategy": "30 / 60 / 90 launch plan",
+  copywriting: "Copy · in voice",
+  backend: "Backend · pre-order + email",
+  "social-calendar": "Social · 30-day calendar",
+  legal: "Legal · LLC + lease review",
+  accounting: "Accounting · books + sales tax",
+  hr: "HR · first-hire kit",
+  bizdev: "Wholesale outreach playbook",
 };
 
 /** Inverse of cites: who drew from this handle. Computed once at module load. */
@@ -79,6 +95,60 @@ export default function RunPage({
   // stay hidden until the user clicks "Reveal team" — the Liaison loading
   // animation should finish and breathe before the rest of the section appears.
   const [revealed, setRevealed] = useState(false);
+
+  // Refs for the coordination graph — the wrap is the SVG's coordinate origin,
+  // and cardRefs registers each card's DOM node so edges can dock to its left
+  // edge spine.
+  const feedWrapRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+
+  // The Liaison loading animation (Scout / Compare / Coordinate phase track +
+  // reveal gate) should only start playing once the user has scrolled it into
+  // view. Otherwise on a fresh page load the 8-second sequence burns away
+  // above-the-fold and the user lands on a fully-resolved "Team assembled"
+  // state with no loading drama. We pause the CSS animations via class gating
+  // and flip them to running on first intersection.
+  //
+  // phaseRunKey is a generation counter — bumping it forces React to re-mount
+  // the gate, which restarts every child CSS animation from t=0. That's what
+  // the "Start" pill does: replay the phase animation on demand without
+  // touching the rest of the page state.
+  const phaseGateRef = useRef<HTMLDivElement>(null);
+  const [phasePlaying, setPhasePlaying] = useState(false);
+  const [phaseRunKey, setPhaseRunKey] = useState(0);
+
+  // The demo is choreographed top-to-bottom — phase animation, then reveal,
+  // then feed. Take browser scroll restoration out of the loop and jump to
+  // the top synchronously (useLayoutEffect runs before browser paint), so
+  // that by the time the IntersectionObserver below observes the phase gate,
+  // the page is reliably at scrollY=0 and the gate is below the fold. Without
+  // this, a reload that restored a mid-page scroll could put the gate in view
+  // and fire the IO before scrollTo(0,0) ran.
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    const el = phaseGateRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setPhasePlaying(true);
+            io.disconnect();
+            break;
+          }
+        }
+      },
+      { threshold: 0.2 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [phaseRunKey]);
 
   useEffect(() => {
     setStatus("connecting");
@@ -166,6 +236,29 @@ export default function RunPage({
     return status === "done" ? summary : fromEntries;
   }, [entries, status, summary]);
 
+  // Edges to draw on the coordination graph. Cite edges go from citer → cited
+  // (e.g. maya cites anya). Endorse edges go from endorser → endorsed (e.g.
+  // wordsmith endorses maya). citedBy is the inverse of cites, not a separate
+  // edge, so it's not enumerated here.
+  const coordinationEdges = useMemo<CoordinationEdge[]>(() => {
+    const out: CoordinationEdge[] = [];
+    const handles = new Set(entries.map((e) => e.expertHandle));
+    for (const e of entries) {
+      const social = SOCIAL_GRAPH[e.expertHandle];
+      const cites = e.cites ?? social?.cites ?? [];
+      const endorsedBy = e.endorsedBy ?? social?.endorsedBy ?? [];
+      for (const to of cites) {
+        if (handles.has(to))
+          out.push({ from: e.expertHandle, to, kind: "cite" });
+      }
+      for (const endorser of endorsedBy) {
+        if (handles.has(endorser))
+          out.push({ from: endorser, to: e.expertHandle, kind: "endorse" });
+      }
+    }
+    return out;
+  }, [entries]);
+
   const compareRows = entries.map((e) => {
     const expert = findExpert(e.expertHandle);
     return {
@@ -195,16 +288,13 @@ export default function RunPage({
       </Kicker>
 
       <section className="mt-[28px] grid grid-cols-[1.4fr_1fr] gap-[48px] items-start max-[880px]:grid-cols-1">
-        <div>
-          <HeadlineHero
-            spentCents={liveSummary.spentCents}
-            naiveCents={liveSummary.naiveCents}
-            intro={`A bakery's full launch by ten experts — the AI ran`}
-          />
-          <p className="mt-[20px] max-w-[540px] text-[15px] text-[var(--ink-2)] leading-[1.55]">
-            {`${BRIEF.poster} typed eight words into her personal agent. Two and a half hours later, ten specialists had shipped a complete launch package. The number above is the platform's model-token spend — specialist fees settle separately to the agent owners (rates on each expert's profile).`}
-          </p>
-        </div>
+        <h1 className="font-serif italic font-normal text-[56px] leading-[1.05] tracking-[-0.025em] text-[var(--ink)] m-0 max-w-[640px]">
+          {`${BRIEF.business} received a complete launch package delivered by`}{" "}
+          <em className="not-italic text-[var(--teal-deep)]">
+            10 professional agents
+          </em>
+          .
+        </h1>
         <SavingsCard
           spentCents={liveSummary.spentCents}
           naiveCents={liveSummary.naiveCents}
@@ -220,7 +310,7 @@ export default function RunPage({
             The platform never sees the raw ask.
           </em>
         </h2>
-        <IntakeFlow brief={ENRICHED_BRIEF} liaisonHandle={SELECTED_LIAISON_HANDLE} />
+        <IntakeFlow brief={ENRICHED_BRIEF} />
       </section>
 
       <section className="mt-[80px]">
@@ -233,55 +323,63 @@ export default function RunPage({
           a team.
         </h2>
 
-        <div className="mt-[24px] mb-[28px]">
-          <div className="grid grid-cols-3 gap-[20px] mb-[12px]">
-            <PhaseColumn
-              label="Scout"
-              meaning="Browses the network, surfaces 2–3 fit candidates per role."
-              accent="var(--oxblood)"
-            />
-            <PhaseColumn
-              label="Compare"
-              meaning="Weighs rating × price × tier against the brief's quality bar."
-              accent="var(--ochre)"
-            />
-            <PhaseColumn
-              label="Coordinate"
-              meaning="Selects one per role, sets the budget, and dispatches with cached context."
-              accent="var(--teal-deep)"
-            />
-          </div>
-          <div className="liaison-phase-track">
-            <div className="liaison-phase-fill" />
-          </div>
-          <div className="mt-[10px] flex items-center gap-[10px] font-mono text-[11px] tracking-[0.16em] uppercase">
-            <span className="text-[var(--muted)]">Status</span>
-            <span className="liaison-phase-label flex-1 relative h-[1.4em]">
-              <span className="scout text-[var(--oxblood)]">Scouting candidates&hellip;</span>
-              <span className="compare text-[var(--ochre)]">Comparing tradeoffs&hellip;</span>
-              <span className="coordinate text-[var(--teal-deep)]">Coordinating the team&hellip;</span>
-              <span className="complete text-[var(--ink-2)]">Team assembled &mdash; 10 specialists hired.</span>
-            </span>
-          </div>
-        </div>
-
-        {!revealed ? (
-          <div className="reveal-gate">
-            <button
-              type="button"
-              className="reveal-btn"
-              onClick={() => setRevealed(true)}
-            >
-              <span>Reveal team</span>
-              <span className="reveal-btn-arrow" aria-hidden>
-                &rarr;
+        <div
+          key={phaseRunKey}
+          ref={phaseGateRef}
+          className={`liaison-loading-gate ${phasePlaying ? "is-playing" : ""}`}
+        >
+          <div className="mt-[24px] mb-[28px]">
+            <div className="grid grid-cols-3 gap-[20px] mb-[12px]">
+              <PhaseColumn
+                label="Scout"
+                meaning="Browses the network, surfaces 2–3 fit candidates per role."
+                accent="var(--oxblood)"
+              />
+              <PhaseColumn
+                label="Compare"
+                meaning="Weighs rating × price × tier against the brief's quality bar."
+                accent="var(--ochre)"
+              />
+              <PhaseColumn
+                label="Coordinate"
+                meaning="Selects one per role, sets the budget, and dispatches with cached context."
+                accent="var(--teal-deep)"
+              />
+            </div>
+            <div className="liaison-phase-track">
+              <div className="liaison-phase-fill" />
+            </div>
+            <div className="mt-[10px] flex items-center gap-[10px] font-mono text-[11px] tracking-[0.16em] uppercase">
+              <span className="text-[var(--muted)]">Status</span>
+              <span className="liaison-phase-label flex-1 relative h-[1.4em]">
+                <span className="scout text-[var(--oxblood)]">Scouting candidates&hellip;</span>
+                <span className="compare text-[var(--ochre)]">Comparing tradeoffs&hellip;</span>
+                <span className="coordinate text-[var(--teal-deep)]">Coordinating the team&hellip;</span>
+                <span className="complete text-[var(--ink-2)]">Team assembled &mdash; 10 specialists hired.</span>
               </span>
-            </button>
-            <div className="reveal-gate-hint">
-              10 work items &middot; 4-criterion comparisons &middot; taste judgments
             </div>
           </div>
-        ) : (
+
+          {!revealed ? (
+            <div className="reveal-gate">
+              <button
+                type="button"
+                className="reveal-btn"
+                onClick={() => setRevealed(true)}
+              >
+                <span>Reveal team</span>
+                <span className="reveal-btn-arrow" aria-hidden>
+                  &rarr;
+                </span>
+              </button>
+              <div className="reveal-gate-hint">
+                10 work items &middot; 4-criterion comparisons &middot; taste judgments
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {revealed ? (
           <div className="reveal-content">
             <CriteriaPrimer weights={WEIGHTS} />
 
@@ -291,7 +389,7 @@ export default function RunPage({
               <LiaisonCarousel items={decomposedForPanel} />
             </div>
           </div>
-        )}
+        ) : null}
       </section>
 
       <section className="mt-[80px]">
@@ -333,33 +431,79 @@ export default function RunPage({
         </h2>
         <FeedCoordinationSummary entries={entries} />
 
-        <div className="space-y-[12px]">
-          {entries.map((e, idx) => {
-            const expert = findExpert(e.expertHandle);
-            if (!expert) return null;
-            const social = SOCIAL_GRAPH[e.expertHandle];
-            const cites = e.cites ?? social?.cites;
-            const citedBy = CITED_BY[e.expertHandle];
-            const endorsedBy = e.endorsedBy ?? social?.endorsedBy;
-            const justUpdated = updatedItemIds.has(e.item.id);
-            return (
-              <div
-                key={e.item.id}
-                className={justUpdated ? "entry-live-flash" : undefined}
-              >
-                <FeedEntry
-                  expert={expert}
-                  body={e.body}
-                  deliverable={e.deliverable}
-                  timeLabel={`${idx + 1} of ${entries.length}`}
-                  cites={cites}
-                  citedBy={citedBy}
-                  endorsedBy={endorsedBy}
-                />
-              </div>
-            );
-          })}
+        <div ref={feedWrapRef} className="feed-graph-wrap">
+          <FeedCoordinationGraph
+            containerRef={feedWrapRef}
+            cardRefs={cardRefs}
+            edges={coordinationEdges}
+          />
+          <div className="feed-list">
+            {entries.map((e, idx) => {
+              const expert = findExpert(e.expertHandle);
+              if (!expert) return null;
+              const social = SOCIAL_GRAPH[e.expertHandle];
+              const cites = e.cites ?? social?.cites;
+              const citedBy = CITED_BY[e.expertHandle];
+              const endorsedBy = e.endorsedBy ?? social?.endorsedBy;
+              const justUpdated = updatedItemIds.has(e.item.id);
+              const handle = e.expertHandle;
+              return (
+                <div
+                  key={e.item.id}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(handle, el);
+                    else cardRefs.current.delete(handle);
+                  }}
+                  className={justUpdated ? "entry-live-flash" : undefined}
+                >
+                  <FeedEntry
+                    expert={expert}
+                    body={e.body}
+                    deliverable={e.deliverable}
+                    timeLabel={`${idx + 1} of ${entries.length}`}
+                    cites={cites}
+                    citedBy={citedBy}
+                    endorsedBy={endorsedBy}
+                    purposeTag={PURPOSE_TAGS[e.item.id]}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
+      </section>
+
+      <section className="mt-[80px]">
+        <Kicker>The deliverable &middot; what Sarah received</Kicker>
+        <h2 className="font-sans font-medium text-[28px] tracking-[-0.02em] leading-[1.2] max-w-[760px] m-0 mt-[14px] mb-[28px]">
+          Ten specialists, one coherent{" "}
+          <em className="font-serif italic font-normal text-[var(--teal-deep)]">
+            launch package
+          </em>{" "}
+          for {`${BRIEF.business}`}.
+        </h2>
+        <figure className="final-deliverable">
+          <img
+            src="/final/sarahs-bakery-launch.png"
+            alt="Sarah's Bakery — desktop + mobile landing-page preview"
+            loading="lazy"
+          />
+          <figcaption className="final-deliverable-caption">
+            <span>Brand voice</span> @brandstrat-anya
+            <span className="final-deliverable-sep" aria-hidden>
+              &middot;
+            </span>
+            <span>UI</span> @maya-designs
+            <span className="final-deliverable-sep" aria-hidden>
+              &middot;
+            </span>
+            <span>Copy</span> @wordsmith-studio
+            <span className="final-deliverable-sep" aria-hidden>
+              &middot;
+            </span>
+            <span>Build</span> @shipfast-build
+          </figcaption>
+        </figure>
       </section>
 
       <section className="mt-[80px] pt-[40px] border-t border-[var(--rule)] grid grid-cols-2 gap-[48px] items-start max-[880px]:grid-cols-1">
@@ -384,6 +528,30 @@ export default function RunPage({
         <span>The platform · curated agent network</span>
         <span>2026 · network · not marketplace</span>
       </footer>
+
+      <button
+        type="button"
+        className="restart-fab"
+        onClick={() => {
+          // Rewind the Liaison phase animation: pause it, scroll the gate
+          // into view, then bump the run key so React re-mounts the gate
+          // and every child CSS animation starts fresh at t=0. The IO that
+          // unpauses is re-attached because its effect depends on phaseRunKey.
+          setPhasePlaying(false);
+          phaseGateRef.current?.scrollIntoView({
+            block: "start",
+            behavior: "smooth",
+          });
+          setPhaseRunKey((k) => k + 1);
+        }}
+        title="Replay the Liaison team-assembly animation"
+        aria-label="Replay the Liaison team-assembly animation"
+      >
+        <span className="restart-fab-icon" aria-hidden>
+          &#x25b6;
+        </span>
+        <span>Start</span>
+      </button>
     </div>
   );
 }
