@@ -12,6 +12,8 @@ type Props = {
   matchName: string;
   /** ms per agent during the scan. ~110ms is fast but readable. */
   stepMs?: number;
+  /** Fires once when the scan finishes and the match card has revealed. */
+  onDone?: () => void;
 };
 
 /**
@@ -29,6 +31,7 @@ export function ConciergeScan({
   placeholder = "/whiteclaw review the sarah_bakery_spec.md and propose a solution",
   matchName,
   stepMs = 110,
+  onDone,
 }: Props) {
   const [command, setCommand] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -62,6 +65,12 @@ export function ConciergeScan({
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [phase, total, stepMs]);
+
+  // Notify the parent exactly once when the scan transitions into "done" —
+  // downstream steps (Liaison handoff card) gate their reveal on this signal.
+  useEffect(() => {
+    if (phase === "done") onDone?.();
+  }, [phase, onDone]);
 
   // The visible ticker window — last ~8 candidates ending at scanIndex.
   // Older names scroll off the top; the current name is highlighted.

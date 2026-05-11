@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
 type Props = {
   name: string;
   tier: "haiku" | "sonnet" | "opus";
@@ -9,14 +7,16 @@ type Props = {
   rating: number;
   priorJobs: number;
   bio: string;
+  /** Parent-controlled reveal trigger — flips to true when the upstream
+   *  ConciergeScan finishes, sequencing step 4 strictly after step 3. */
+  revealed: boolean;
 };
 
 /**
- * The Liaison handoff card from step 4 of the IntakeFlow. Lifted into its
- * own client component so it can gate its own entrance on viewport entry —
- * the card stays hidden until it scrolls into frame, then fades-and-rises
- * in. Matches the phase-animation gate's "don't burn the choreography
- * above-the-fold" rule, scoped to a single card.
+ * The Liaison handoff card from step 4 of the IntakeFlow. Rendering is purely
+ * prop-driven: it holds its pre-reveal state (opacity 0, translateY) until the
+ * parent sets `revealed` to true — which the parent does only when the
+ * upstream ConciergeScan signals it has finished animating.
  */
 export function LiaisonHandoffCard({
   name,
@@ -25,29 +25,8 @@ export function LiaisonHandoffCard({
   rating,
   priorJobs,
   bio,
+  revealed,
 }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [revealed, setRevealed] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setRevealed(true);
-            io.disconnect();
-            break;
-          }
-        }
-      },
-      { threshold: 0.25 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
   const avatarBg =
     tier === "opus"
       ? "var(--oxblood)"
@@ -57,7 +36,6 @@ export function LiaisonHandoffCard({
 
   return (
     <div
-      ref={ref}
       className={`liaison-handoff-card ${revealed ? "is-revealed" : ""}`}
       style={{ boxShadow: "var(--shadow-sm)" }}
     >

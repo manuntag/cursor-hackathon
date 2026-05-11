@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import type { EnrichedBrief } from "@/lib/types";
 import { ConciergeScan } from "@/components/ConciergeScan";
@@ -35,6 +38,10 @@ type Props = {
  * matters. With it, the 3-tier model is legible in 20 seconds.
  */
 export function IntakeFlow({ brief }: Props) {
+  // Step 4's reveal is sequentially gated on step 3 completing — the Liaison
+  // handoff card stays hidden until ConciergeScan signals onDone.
+  const [scanDone, setScanDone] = useState(false);
+
   return (
     <div className="grid grid-cols-[64px_1fr] gap-x-[20px] gap-y-[28px] items-start">
       {/* ─────────── Step 1: Raw user input ─────────── */}
@@ -151,7 +158,10 @@ export function IntakeFlow({ brief }: Props) {
         <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--muted)] mb-[10px]">
           Personal agent &middot; queried the network for a fit Liaison
         </div>
-        <ConciergeScan matchName={MATCHED_CONCIERGE.name} />
+        <ConciergeScan
+          matchName={MATCHED_CONCIERGE.name}
+          onDone={() => setScanDone(true)}
+        />
       </div>
 
       {/* ─────────── Step 4: Liaison hand-off ─────────── */}
@@ -167,6 +177,7 @@ export function IntakeFlow({ brief }: Props) {
           rating={MATCHED_CONCIERGE.rating}
           priorJobs={MATCHED_CONCIERGE.priorJobs}
           bio={MATCHED_CONCIERGE.bio}
+          revealed={scanDone}
         />
       </div>
     </div>
