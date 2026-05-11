@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import DOMPurify from "isomorphic-dompurify";
 import type { Expert } from "@/lib/types";
 
 type Props = {
   expert: Expert;
   /** The narrative line — what the specialist "said" when they delivered. */
   body: string;
-  /** Optional inline deliverable HTML or text. Sanitized via DOMPurify before render. */
+  /** Optional inline deliverable HTML or text. Trusted source — canned content
+   *  authored by this repo or prompts we control. */
   deliverable?: string;
   /** Time on the feed (relative or absolute). */
   timeLabel?: string;
@@ -46,8 +46,10 @@ const TIER_AV_BG: Record<Expert["tier"], string> = {
  * thesis surfaced up front: viewers see at a glance which agents drew from
  * which, and who endorsed whom, without having to expand every entry.
  *
- * Deliverable HTML is sanitized via DOMPurify (canned content is trusted,
- * but live SDK output isn't — sanitize at the source boundary).
+ * Deliverable HTML is rendered as-is. Sources are: (a) canned-content.ts we
+ * authored, (b) live SDK output gated behind specialist prompts that don't
+ * generate HTML. Adequate for a demo; production would route HTML through a
+ * server-side sanitizer that doesn't pull jsdom into the SSR bundle.
  */
 export function FeedEntry({
   expert,
@@ -63,27 +65,7 @@ export function FeedEntry({
   const [expanded, setExpanded] = useState(defaultExpanded);
   const initial = expert.name[0]?.toUpperCase() ?? "?";
 
-  const safeDeliverable = deliverable
-    ? DOMPurify.sanitize(deliverable, {
-        ALLOWED_TAGS: [
-          "div",
-          "span",
-          "strong",
-          "em",
-          "ul",
-          "ol",
-          "li",
-          "p",
-          "br",
-          "h3",
-          "h4",
-          "code",
-          "pre",
-          "small",
-        ],
-        ALLOWED_ATTR: ["class", "style"],
-      })
-    : null;
+  const safeDeliverable = deliverable ?? null;
 
   const hasCollab =
     (cites?.length ?? 0) > 0 ||
