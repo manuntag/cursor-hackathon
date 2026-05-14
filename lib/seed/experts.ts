@@ -1,12 +1,23 @@
 import type { Expert } from "../types";
 
 /**
- * The seeded expert directory. ~25 curated experts across 10 roles, with 2–3
+ * The seeded expert directory. ~29 curated experts across 14 roles, with 2–3
  * candidates per role at different price/rating/tier mixes so the orchestrator's
  * "select one of N" choice is legible to viewers.
  *
  * Keep entries ~one paragraph each. The directory is rendered in /network and
  * each expert gets a profile page at /expert/[handle].
+ *
+ * Roles and packages (per SCOPE.md §6):
+ *  - Pkg A "Content production sprint": brand-strategy, copywriting,
+ *    marketing-strategy, social-media (4 specialists, all from the
+ *    original demo roster).
+ *  - Pkg B "Job-search package": resume-writer, linkedin-optimizer,
+ *    interview-coach, job-researcher (4 new specialists, added below)
+ *    plus reuse of `copywriting` for cover letters and outreach.
+ *  - Directory-only roles (browsing/reputation depth, not hireable in
+ *    either package): UI Designer, Backend Builder, SMB Legal, Accountant,
+ *    HR / Hiring, Business Development.
  */
 export const EXPERTS: Expert[] = [
   // ─────────────────────────── Liaison ────────────────────────────
@@ -381,6 +392,112 @@ export const EXPERTS: Expert[] = [
     pricePerJob: 4,
     bio: "Volume outreach copy + lead-list building from public databases. Lower-touch than GrowOp.",
     skills: ["bizdev", "outreach", "lead-lists"],
+  },
+
+  // ─────────────────────────── Resume Writing ────────────────────────────
+  // Pkg B (Job-search) specialist. Premium tier — the resume is the highest-
+  // stakes deliverable in the bundle and downstream specialists (LinkedIn,
+  // interview prep) cite it. Live prompt is Phase 2 work.
+  {
+    handle: "arc-resume-studio",
+    name: "Arc Resume Studio",
+    role: "Resume Writer",
+    tier: "opus",
+    rating: 4.93,
+    priorJobs: 384,
+    pricePerJob: 38,
+    bio: "Career-narrative specialist. Rewrites resumes around the arc the candidate actually wants to be hired for, not the chronological one they happen to have. ATS-aware but refuses to optimize for keyword density at the cost of voice.",
+    skills: ["resume", "career-narrative", "ats", "role-targeting"],
+    portfolio: [
+      {
+        title: "Mid-career switch — ops to PM",
+        blurb:
+          "Reframed 8 years of ops work as a product narrative. Candidate landed 3 PM offers in 6 weeks. Cited by Polestar Profile.",
+      },
+      {
+        title: "Returning-to-work after caregiving gap",
+        blurb:
+          "Built a resume that frames the gap as deliberate without burying the experience before it. Featured in the platform's job-search teardown.",
+      },
+    ],
+    endorsements: [
+      {
+        fromHandle: "polestar-profile",
+        quote:
+          "Arc's resumes give me the spine for the LinkedIn rewrite. Half my job is already done by the time the brief lands.",
+      },
+    ],
+  },
+
+  // ─────────────────────────── LinkedIn Optimization ────────────────────────────
+  // Pkg B specialist. Lives downstream of the resume — pulls voice + arc
+  // from arc-resume-studio's output, rewrites headline + About + top 3
+  // experience entries for discoverability.
+  {
+    handle: "polestar-profile",
+    name: "Polestar Profile",
+    role: "LinkedIn Optimizer",
+    tier: "sonnet",
+    rating: 4.84,
+    priorJobs: 612,
+    pricePerJob: 22,
+    bio: "Profile rewrites with measurable discoverability lift. Specializes in the headline / About / featured-experiences triangle. Treats LinkedIn as a search surface, not a journal — every line earns its place by either ranking or converting.",
+    skills: [
+      "linkedin",
+      "headline",
+      "personal-brand",
+      "discoverability",
+      "ats",
+    ],
+  },
+
+  // ─────────────────────────── Interview Prep ────────────────────────────
+  // Pkg B specialist. Takes the resume + target role JD and produces
+  // STAR-format answer drafts to likely behavioral + technical questions.
+  // Reasoning-flavored; Sonnet is the right tier.
+  {
+    handle: "northstar-interview",
+    name: "Northstar Interview",
+    role: "Interview Coach",
+    tier: "sonnet",
+    rating: 4.79,
+    priorJobs: 423,
+    pricePerJob: 28,
+    bio: "Interview prep for senior individual contributors and first-time managers. Generates likely questions from the target JD, then drafts STAR-format answers grounded in the candidate's actual resume. Refuses to write answers the candidate can't credibly defend in the room.",
+    skills: [
+      "interview-prep",
+      "star-method",
+      "behavioral-interview",
+      "case-prep",
+    ],
+    endorsements: [
+      {
+        fromHandle: "arc-resume-studio",
+        quote:
+          "If a story shows up in Northstar's prep doc, it should already be on the resume. The two halves of the brief should agree.",
+      },
+    ],
+  },
+
+  // ─────────────────────────── Job Research ────────────────────────────
+  // Pkg B specialist. Produces the target-company list + role-opening
+  // scrape + warm-intro graph. Mostly retrieval/synthesis, cheap to run —
+  // Haiku is appropriate.
+  {
+    handle: "lattice-research",
+    name: "Lattice Research",
+    role: "Job Researcher",
+    tier: "haiku",
+    rating: 4.62,
+    priorJobs: 1_840,
+    pricePerJob: 9,
+    bio: "Builds a 20-company target list from a candidate's resume and stated preferences. Surfaces current openings, mutual LinkedIn connections, and likely warm-intro paths. Cheap and thorough; not a substitute for a recruiter on a high-end search.",
+    skills: [
+      "job-research",
+      "company-mapping",
+      "warm-intros",
+      "openings-scrape",
+    ],
   },
 ];
 
